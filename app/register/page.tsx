@@ -96,25 +96,25 @@ export default function RegisterPage() {
                             placeholder="SRN"
                             value={form.srn}
                             onChange={(e) => setForm({ ...form, srn: e.target.value })}
-                            className="w-full p-2 mb-2 rounded text-black"
+                            className="w-full p-2 mb-2 rounded bg-white text-black"
                         />
                         <input
                             placeholder="Name"
                             value={form.name}
                             onChange={(e) => setForm({ ...form, name: e.target.value })}
-                            className="w-full p-2 mb-2 rounded text-black"
+                            className="w-full p-2 mb-2 rounded bg-white text-black"
                         />
                         <input
                             placeholder="Email"
                             value={form.email}
                             onChange={(e) => setForm({ ...form, email: e.target.value })}
-                            className="w-full p-2 mb-2 rounded text-black"
+                            className="w-full p-2 mb-2 rounded bg-white text-black"
                         />
                         <input
                             placeholder="Lab"
                             value={form.lab}
                             onChange={(e) => setForm({ ...form, lab: e.target.value })}
-                            className="w-full p-2 mb-4 rounded text-black"
+                            className="w-full p-2 mb-4 rounded bg-white text-black"
                         />
 
                         {!imageData && (
