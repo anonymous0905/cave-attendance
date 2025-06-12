@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import WebcamCapture from "@/components/WebcamCapture";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function RegisterPage() {
-    // @ts-ignore
-    const [user, setUser] = useState<never>(null);
     const [imageData, setImageData] = useState<string | null>(null);
     const [form, setForm] = useState({ srn: "", name: "", email: "", lab: "" });
     const [status, setStatus] = useState("");
@@ -17,10 +16,8 @@ export default function RegisterPage() {
     useEffect(() => {
         supabase.auth.getUser().then(({ data }) => {
             if (!data?.user) router.push("/login");
-            // @ts-expect-error
-            setUser(data.user);
         });
-    }, []);
+    }, [router]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -100,7 +97,7 @@ export default function RegisterPage() {
                 </>
             )}
             {imageData && (
-                <img src={imageData} alt="Preview" className="w-40 h-40 rounded shadow mb-4" />
+                <Image src={imageData} alt="Preview" width={160} height={160} className="w-40 h-40 rounded shadow mb-4" />
             )}
 
             <button
