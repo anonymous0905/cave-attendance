@@ -9,14 +9,14 @@ interface AttendanceRecord {
   location_lat: number;
   location_lng: number;
   photo_url: string;
-  students: {
-    reference_image_url: string;
-  };
 }
 
 export default function VerifyPage() {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [selected, setSelected] = useState<AttendanceRecord | null>(null);
+  const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
+  const [studentName, setStudentName] = useState<string | null>(null);
+  const [studentLab, setStudentLab] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -29,14 +29,7 @@ export default function VerifyPage() {
 
       const { data: rows, error } = await supabase
           .from("attendance_logs")
-          .select(`
-          id,
-          srn,
-          location_lat,
-          location_lng,
-          photo_url,
-          students:students!inner(reference_image_url)
-        `)
+          .select("id, srn, location_lat, location_lng, photo_url")
           .eq("flagged", true);
 
       if (error) {
@@ -51,6 +44,28 @@ export default function VerifyPage() {
     fetchRecords();
   }, [router]);
 
+  const handleSelectRecord = async (rec: AttendanceRecord) => {
+    setSelected(rec);
+    console.log("Selected record:", rec);
+
+    const { data, error } = await supabase
+        .from("students")
+        .select("reference_image_url, name, lab")
+        .eq("srn", rec.srn)
+        .single();
+
+    if (error) {
+      console.error("Error fetching student info:", error);
+      setReferenceImageUrl(null);
+      setStudentName(null);
+      setStudentLab(null);
+    } else {
+      setReferenceImageUrl(data.reference_image_url);
+      setStudentName(data.name);
+      setStudentLab(data.lab);
+    }
+  };
+
   const handleAction = async (id: string, verified: boolean) => {
     const { error } = await supabase
         .from("attendance_logs")
@@ -64,6 +79,9 @@ export default function VerifyPage() {
 
     setRecords((prev) => prev.filter((r) => r.id !== id));
     setSelected(null);
+    setReferenceImageUrl(null);
+    setStudentName(null);
+    setStudentLab(null);
   };
 
   return (
@@ -79,10 +97,7 @@ export default function VerifyPage() {
               >
                 <span>SRN: {rec.srn}</span>
                 <button
-                    onClick={() => {
-                      console.log("Selected record:", rec);
-                      setSelected(rec);
-                    }}
+                    onClick={() => handleSelectRecord(rec)}
                     className="text-blue-600 underline"
                 >
                   View
@@ -95,9 +110,18 @@ export default function VerifyPage() {
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white p-4 rounded w-11/12 max-w-2xl">
                 <div className="flex justify-between items-start mb-4">
-                  <h2 className="text-xl font-semibold">SRN: {selected.srn}</h2>
+                  <div>
+                    <h2 className="text-xl font-semibold">SRN: {selected.srn}</h2>
+                    {studentName && <p className="text-gray-700">Name: {studentName}</p>}
+                    {studentLab && <p className="text-gray-700">Lab: {studentLab}</p>}
+                  </div>
                   <button
-                      onClick={() => setSelected(null)}
+                      onClick={() => {
+                        setSelected(null);
+                        setReferenceImageUrl(null);
+                        setStudentName(null);
+                        setStudentLab(null);
+                      }}
                       className="text-gray-500 text-2xl leading-none"
                   >
                     &times;
@@ -107,14 +131,18 @@ export default function VerifyPage() {
                 <div className="flex flex-col md:flex-row gap-4 mb-4">
                   <div className="flex-1">
                     <p className="font-semibold mb-2">Reference Image</p>
-                    <img
-                        src={selected.students?.reference_image_url}
-                        alt="Reference"
-                        width={240}
-                        height={240}
-                        className="rounded border"
-                        onError={(e) => (e.currentTarget.src = "/placeholder.png")}
-                    />
+                    {referenceImageUrl ? (
+                        <img
+                            src={referenceImageUrl}
+                            alt="Reference"
+                            width={240}
+                            height={240}
+                            className="rounded border"
+                            onError={(e) => (e.currentTarget.src = "/placeholder.png")}
+                        />
+                    ) : (
+                        <p className="text-sm text-gray-500">Loading...</p>
+                    )}
                   </div>
                   <div className="flex-1">
                     <p className="font-semibold mb-2">Captured Image</p>
