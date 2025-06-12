@@ -1,16 +1,14 @@
 "use client";
-import React, { useRef, useState } from "react";
+import React, { useRef } from "react";
 import Webcam from "react-webcam";
 
 export default function WebcamCapture({ onCapture }: { onCapture: (img: string) => void }) {
     const webcamRef = useRef<Webcam>(null);
-    const [captured, setCaptured] = useState(false);
 
     const capture = () => {
         const imageSrc = webcamRef.current?.getScreenshot();
         if (imageSrc) {
             onCapture(imageSrc);
-            setCaptured(true);
         }
     };
 
