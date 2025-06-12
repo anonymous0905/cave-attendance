@@ -5,6 +5,8 @@ import Image from "next/image";
 import WebcamCapture from "@/components/WebcamCapture";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import logo from "@/public/cave-logo1.png";
+import nav from "@/public/nav-logo.png";
 
 export default function RegisterPage() {
     const [imageData, setImageData] = useState<string | null>(null);
@@ -61,53 +63,81 @@ export default function RegisterPage() {
     };
 
     return (
-        <div className="max-w-xl mx-auto p-6">
-            <h1 className="text-2xl font-bold mb-4">Register Intern</h1>
+        <>
+            <Image src={nav} alt="nav" width={250} height={900} className="fixed bottom-0 left-0 z-40 pointer-events-none" />
+            <div className="flex min-h-screen text-white bg-[#1a1a1a]">
+                {/* Sidebar */}
+                <aside className="w-64 bg-black p-6 flex flex-col justify-between fixed top-0 left-0 h-full z-30">
+                    <div>
+                        <Image src={logo} alt="Logo" width={200} height={200} className="mb-8" />
+                        <nav className="space-y-4 text-xl">
+                            <button onClick={() => router.push('/dashboard')} className="text-left w-full">Dashboard</button>
+                            <button onClick={() => router.push('/register')} className="text-left w-full bg-gray-200 text-black rounded px-1 py-1">New Registration</button>
+                            <button onClick={() => router.push('/verify')} className="text-left w-full">Verify Records</button>
+                            <button onClick={() => router.push('/myaccount')} className="text-left w-full">My Account</button>
+                        </nav>
+                        <button
+                            onClick={async () => {
+                                await supabase.auth.signOut();
+                                router.push('/');
+                            }}
+                            className="text-left text-lg mt-10"
+                        >
+                            Logout
+                        </button>
+                    </div>
+                </aside>
 
-            <input
-                placeholder="SRN"
-                value={form.srn}
-                onChange={(e) => setForm({ ...form, srn: e.target.value })}
-                className="w-full p-2 mb-2 border rounded"
-            />
-            <input
-                placeholder="Name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full p-2 mb-2 border rounded"
-            />
-            <input
-                placeholder="Email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full p-2 mb-2 border rounded"
-            />
-            <input
-                placeholder="Lab"
-                value={form.lab}
-                onChange={(e) => setForm({ ...form, lab: e.target.value })}
-                className="w-full p-2 mb-4 border rounded"
-            />
+                {/* Main Content */}
+                <main className="flex-1 p-10 ml-64">
+                    <h2 className="text-3xl font-bold mb-6">Register Intern</h2>
+                    <section className="bg-[#2a2a2a] p-6 rounded-2xl max-w-xl">
+                        <input
+                            placeholder="SRN"
+                            value={form.srn}
+                            onChange={(e) => setForm({ ...form, srn: e.target.value })}
+                            className="w-full p-2 mb-2 rounded text-black"
+                        />
+                        <input
+                            placeholder="Name"
+                            value={form.name}
+                            onChange={(e) => setForm({ ...form, name: e.target.value })}
+                            className="w-full p-2 mb-2 rounded text-black"
+                        />
+                        <input
+                            placeholder="Email"
+                            value={form.email}
+                            onChange={(e) => setForm({ ...form, email: e.target.value })}
+                            className="w-full p-2 mb-2 rounded text-black"
+                        />
+                        <input
+                            placeholder="Lab"
+                            value={form.lab}
+                            onChange={(e) => setForm({ ...form, lab: e.target.value })}
+                            className="w-full p-2 mb-4 rounded text-black"
+                        />
 
-            {!imageData && (
-                <>
-                    <WebcamCapture onCapture={setImageData} />
-                    <p className="text-center my-2">OR</p>
-                    <input type="file" accept="image/*" onChange={handleFileChange} className="w-full mb-4" />
-                </>
-            )}
-            {imageData && (
-                <Image src={imageData} alt="Preview" width={160} height={160} className="w-40 h-40 rounded shadow mb-4" />
-            )}
+                        {!imageData && (
+                            <>
+                                <WebcamCapture onCapture={setImageData} />
+                                <p className="text-center my-2">OR</p>
+                                <input type="file" accept="image/*" onChange={handleFileChange} className="w-full mb-4" />
+                            </>
+                        )}
+                        {imageData && (
+                            <Image src={imageData} alt="Preview" width={160} height={160} className="w-40 h-40 rounded shadow mb-4" />
+                        )}
 
-            <button
-                onClick={handleSubmit}
-                className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
-            >
-                Submit
-            </button>
-
-            {status && <p className="mt-2 text-sm text-gray-600">{status}</p>}
-        </div>
+                        <button
+                            onClick={handleSubmit}
+                            className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
+                        >
+                            Submit
+                        </button>
+                    </section>
+                    {status && <p className="mt-4 text-sm text-gray-300">{status}</p>}
+                </main>
+            </div>
+        </>
     );
 }
