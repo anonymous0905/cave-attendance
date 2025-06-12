@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import WebcamCapture from '@/components/WebcamCapture'
 import vrDoctorsImg from '@/public/login-side.png'
 import caveLogo from '@/public/cave-logo1.png'
@@ -68,7 +69,13 @@ export default function CapturePage() {
   }
 
   return (
-      <div className="flex h-screen w-screen">
+      <div className="flex h-screen w-screen relative">
+        <Link
+            href="/login"
+            className="absolute top-6 right-6 z-10 bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          Admin Login
+        </Link>
         {/* Left Panel */}
         <div className="w-1/2 bg-black flex items-center justify-center relative">
           <div className="bg-white p-8 sm:p-10 lg:p-12 rounded-3xl shadow-xl w-full max-w-sm sm:max-w-md lg:max-w-lg">
