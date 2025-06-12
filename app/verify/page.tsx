@@ -18,20 +18,25 @@ export default function VerifyPage() {
   const router = useRouter();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
+    const fetchRecords = async () => {
+      const { data } = await supabase.auth.getUser();
       if (!data?.user) {
         router.push("/login");
         return;
       }
-      supabase
+
+      const { data: rows, error } = await supabase
         .from("attendance_logs")
         .select("*")
-        .eq("flagged", true)
-        .then(({ data, error }) => {
-          if (error) console.error(error);
-          else setRecords((data as AttendanceRecord[]) || []);
-        });
-    });
+        .is("flagged", true);
+      if (error) {
+        console.error(error);
+        return;
+      }
+      setRecords((rows as AttendanceRecord[]) || []);
+    };
+
+    fetchRecords();
   }, [router]);
 
   const handleAction = async (id: number, verified: boolean) => {
