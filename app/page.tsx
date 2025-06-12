@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import WebcamCapture from "@/components/WebcamCapture";
 
 export default function CapturePage() {
@@ -8,7 +9,6 @@ export default function CapturePage() {
   const [mode, setMode] = useState<"login" | "logout">("login");
   const [status, setStatus] = useState("");
   const [imageData, setImageData] = useState<string | null>(null);
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   const getLocation = () => {
     return new Promise<{ lat: number; lng: number }>((resolve, reject) => {
@@ -22,7 +22,7 @@ export default function CapturePage() {
                 lng: position.coords.longitude,
               });
             },
-            (err) => reject("Location access denied")
+            () => reject("Location access denied")
         );
       }
     });
@@ -38,7 +38,6 @@ export default function CapturePage() {
 
     try {
       const coords = await getLocation();
-      setLocation(coords);
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/submit-log`, {
         method: "POST",
@@ -60,8 +59,9 @@ export default function CapturePage() {
         setSrn("");
         setImageData(null);
       }
-    } catch (err: any) {
-      setStatus("Error: " + err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setStatus("Error: " + message);
     }
   };
 
@@ -87,7 +87,7 @@ export default function CapturePage() {
 
         {!imageData && <WebcamCapture onCapture={setImageData} />}
         {imageData && (
-            <img src={imageData} alt="Captured" className="w-40 h-40 rounded shadow mb-4" />
+            <Image src={imageData} alt="Captured" width={160} height={160} className="w-40 h-40 rounded shadow mb-4" />
         )}
 
         <button
