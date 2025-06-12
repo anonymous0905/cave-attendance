@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 import WebcamCapture from "@/components/WebcamCapture";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function RegisterPage() {
+    // @ts-ignore
+    const [user, setUser] = useState<never>(null);
     const [imageData, setImageData] = useState<string | null>(null);
     const [form, setForm] = useState({ srn: "", name: "", email: "", lab: "" });
     const [status, setStatus] = useState("");
@@ -14,12 +16,22 @@ export default function RegisterPage() {
 
     useEffect(() => {
         supabase.auth.getUser().then(({ data }) => {
-            if (!data?.user) router.push("/login"); // redirect if not logged in
+            if (!data?.user) router.push("/login");
+            // @ts-expect-error
+            setUser(data.user);
         });
-    }, [router]);
+    }, []);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onloadend = () => setImageData(reader.result as string);
+        reader.readAsDataURL(file);
+    };
 
     const handleSubmit = async () => {
-        setStatus("Uploading...");
+        setStatus("Submitting...");
 
         const { srn, name, email, lab } = form;
 
@@ -28,42 +40,27 @@ export default function RegisterPage() {
             return;
         }
 
-        // Convert base64 to blob
-        const res = await fetch(imageData);
-        const blob = await res.blob();
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
 
-        // Upload to Supabase Storage
-        const uploadPath = `photos/${srn}.jpg`;
-        const { error: uploadError } = await supabase.storage
-            .from("reference-photos")
-            .upload(uploadPath, blob, { upsert: true });
+        const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/register-intern`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ srn, name, email, lab, imageData })
+        });
 
-        if (uploadError) {
-            setStatus("Failed to upload image");
+        const result = await response.json();
+
+        if (!response.ok) {
+            setStatus(`Failed: ${result.error || "Unknown error"}`);
             return;
         }
 
-        const { data: publicURLData } = supabase.storage
-            .from("reference-photos")
-            .getPublicUrl(uploadPath);
-
-        const { error: insertError } = await supabase.from("students").insert([
-            {
-                srn,
-                name,
-                email,
-                lab,
-                reference_image_url: publicURLData.publicUrl
-            }
-        ]);
-
-        if (insertError) {
-            setStatus("Failed to insert student record");
-        } else {
-            setStatus("Student registered successfully!");
-            setForm({ srn: "", name: "", email: "", lab: "" });
-            setImageData(null);
-        }
+        setStatus("Intern registered successfully!");
+        setForm({ srn: "", name: "", email: "", lab: "" });
+        setImageData(null);
     };
 
     return (
@@ -95,9 +92,15 @@ export default function RegisterPage() {
                 className="w-full p-2 mb-4 border rounded"
             />
 
-            {!imageData && <WebcamCapture onCapture={setImageData} />}
+            {!imageData && (
+                <>
+                    <WebcamCapture onCapture={setImageData} />
+                    <p className="text-center my-2">OR</p>
+                    <input type="file" accept="image/*" onChange={handleFileChange} className="w-full mb-4" />
+                </>
+            )}
             {imageData && (
-                <img src={imageData} alt="Captured" className="w-40 h-40 rounded shadow mb-4" />
+                <img src={imageData} alt="Preview" className="w-40 h-40 rounded shadow mb-4" />
             )}
 
             <button
