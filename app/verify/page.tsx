@@ -1,7 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { supabase } from "@/lib/supabaseClient";
+import logo from "@/public/cave-logo1.png";
+import nav from "@/public/nav-logo.png";
 
 interface AttendanceRecord {
   id: string;
@@ -9,6 +12,7 @@ interface AttendanceRecord {
   location_lat: number;
   location_lng: number;
   photo_url: string;
+  lab?: string | null;
 }
 
 export default function VerifyPage() {
@@ -17,7 +21,13 @@ export default function VerifyPage() {
   const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
   const [studentName, setStudentName] = useState<string | null>(null);
   const [studentLab, setStudentLab] = useState<string | null>(null);
+  const [labs, setLabs] = useState<string[]>([]);
+  const [filterLab, setFilterLab] = useState<string>("all");
   const router = useRouter();
+
+  const filteredRecords = records.filter(
+      (r) => filterLab === "all" || r.lab === filterLab,
+  );
 
   useEffect(() => {
     const fetchRecords = async () => {
@@ -37,8 +47,34 @@ export default function VerifyPage() {
         return;
       }
 
-      console.log("Fetched flagged records:", rows);
-      setRecords(rows || []);
+      if (!rows) {
+        setRecords([]);
+        return;
+      }
+
+      const srns = rows.map((r) => r.srn);
+      const { data: students, error: studentsErr } = await supabase
+          .from("students")
+          .select("srn, lab")
+          .in("srn", srns);
+
+      if (studentsErr) {
+        console.error("Error fetching labs:", studentsErr);
+      }
+
+      const labMap: Record<string, string | null> = {};
+      students?.forEach((s) => {
+        labMap[s.srn] = s.lab;
+      });
+
+      const uniqueLabs = Array.from(
+          new Set((students || []).map((s) => s.lab).filter(Boolean)),
+      ) as string[];
+      setLabs(uniqueLabs);
+
+      const withLab = rows.map((r) => ({ ...r, lab: labMap[r.srn] || null }));
+      console.log("Fetched flagged records:", withLab);
+      setRecords(withLab);
     };
 
     fetchRecords();
@@ -85,26 +121,78 @@ export default function VerifyPage() {
   };
 
   return (
-      <div className="max-w-3xl mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-4">Verify Records</h1>
-        {records.length === 0 && <p>No flagged records.</p>}
-
-        <ul className="space-y-4">
-          {records.map((rec) => (
-              <li
-                  key={rec.id}
-                  className="border p-4 rounded flex justify-between items-center"
+      <>
+        <Image src={nav} alt="nav" width={250} height={900} className="fixed bottom-0 left-0 z-40 pointer-events-none" />
+        <div className="flex min-h-screen text-white bg-[#1a1a1a]">
+          <aside className="w-64 bg-black p-6 flex flex-col justify-between fixed top-0 left-0 h-full z-30">
+            <div>
+              <Image src={logo} alt="Logo" width={200} height={200} className="mb-8" />
+              <nav className="space-y-4 text-xl">
+                <button onClick={() => router.push('/dashboard')} className="text-left w-full">Dashboard</button>
+                <button onClick={() => router.push('/register')} className="text-left w-full">New Registration</button>
+                <button onClick={() => router.push('/verify')} className="text-left w-full bg-gray-200 text-black rounded px-1 py-1">Verify Records</button>
+                <button onClick={() => router.push('/myaccount')} className="text-left w-full">My Account</button>
+              </nav>
+              <button
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    router.push('/');
+                  }}
+                  className="text-left text-lg mt-10"
               >
-                <span>SRN: {rec.srn}</span>
-                <button
-                    onClick={() => handleSelectRecord(rec)}
-                    className="text-blue-600 underline"
-                >
-                  View
-                </button>
-              </li>
-          ))}
-        </ul>
+                Logout
+              </button>
+            </div>
+          </aside>
+
+          <main className="flex-1 p-10 ml-64">
+            <h2 className="text-3xl font-bold mb-6">Verify Records</h2>
+
+            <div className="mb-4">
+              <label className="mr-2">Filter by Lab:</label>
+              <select
+                  value={filterLab}
+                  onChange={(e) => setFilterLab(e.target.value)}
+                  className="text-black p-1 rounded"
+              >
+                <option value="all">All</option>
+                {labs.map((lab) => (
+                    <option key={lab} value={lab}>
+                      {lab}
+                    </option>
+                ))}
+              </select>
+            </div>
+
+            {filteredRecords.length === 0 && <p>No flagged records.</p>}
+
+            {filteredRecords.length > 0 && (
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-left bg-[#2a2a2a]">
+                      <th className="p-2">SRN</th>
+                      <th className="p-2">Lab</th>
+                      <th className="p-2">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRecords.map((rec) => (
+                        <tr key={rec.id} className="border-b border-gray-700">
+                          <td className="p-2">{rec.srn}</td>
+                          <td className="p-2">{rec.lab || '-'}</td>
+                          <td className="p-2">
+                            <button
+                                onClick={() => handleSelectRecord(rec)}
+                                className="text-blue-300 underline"
+                            >
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                    ))}
+                  </tbody>
+                </table>
+            )}
 
         {selected && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -185,6 +273,8 @@ export default function VerifyPage() {
               </div>
             </div>
         )}
-      </div>
+          </main>
+        </div>
+      </>
   );
 }
