@@ -6,8 +6,6 @@ import WebcamCapture from "@/components/WebcamCapture";
 import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
-    // @ts-ignore
-    const [user, setUser] = useState<never>(null);
     const [imageData, setImageData] = useState<string | null>(null);
     const [form, setForm] = useState({ srn: "", name: "", email: "", lab: "" });
     const [status, setStatus] = useState("");
@@ -17,9 +15,8 @@ export default function RegisterPage() {
     useEffect(() => {
         supabase.auth.getUser().then(({ data }) => {
             if (!data?.user) router.push("/login"); // redirect if not logged in
-            setUser(data.user);
         });
-    }, []);
+    }, [router]);
 
     const handleSubmit = async () => {
         setStatus("Uploading...");
