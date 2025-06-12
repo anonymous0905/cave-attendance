@@ -28,7 +28,7 @@ export default function VerifyPage() {
       const { data: rows, error } = await supabase
         .from("attendance_logs")
         .select("*")
-        .is("flagged", true);
+        .eq("flagged", true);
       if (error) {
         console.error(error);
         return;
