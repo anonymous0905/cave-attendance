@@ -12,6 +12,7 @@ interface AttendanceRecord {
   location_lat: number;
   location_lng: number;
   photo_url: string;
+  reason_flagged: string | null;
   lab?: string | null;
 }
 
@@ -22,11 +23,16 @@ export default function VerifyPage() {
   const [studentName, setStudentName] = useState<string | null>(null);
   const [studentLab, setStudentLab] = useState<string | null>(null);
   const [labs, setLabs] = useState<string[]>([]);
+  const [reasons, setReasons] = useState<string[]>([]);
   const [filterLab, setFilterLab] = useState<string>("all");
+  const [filterReason, setFilterReason] = useState<string>("all");
   const router = useRouter();
 
   const filteredRecords = records.filter(
-      (r) => filterLab === "all" || r.lab === filterLab,
+      (r) =>
+          (filterLab === "all" || r.lab === filterLab) &&
+          (filterReason === "all" ||
+              (r.reason_flagged ?? "Reason not found") === filterReason),
   );
 
   useEffect(() => {
@@ -39,7 +45,7 @@ export default function VerifyPage() {
 
       const { data: rows, error } = await supabase
           .from("attendance_logs")
-          .select("id, srn, location_lat, location_lng, photo_url")
+          .select("id, srn, location_lat, location_lng, photo_url, reason_flagged")
           .eq("flagged", true);
 
       if (error) {
@@ -73,6 +79,10 @@ export default function VerifyPage() {
       setLabs(uniqueLabs);
 
       const withLab = rows.map((r) => ({ ...r, lab: labMap[r.srn] || null }));
+      const uniqueReasons = Array.from(
+          new Set(withLab.map((r) => r.reason_flagged ?? "Reason not found")),
+      );
+      setReasons(uniqueReasons);
       console.log("Fetched flagged records:", withLab);
       setRecords(withLab);
     };
@@ -148,20 +158,37 @@ export default function VerifyPage() {
           <main className="flex-1 p-10 ml-64">
             <h2 className="text-3xl font-bold mb-6">Verify Records</h2>
 
-            <div className="mb-4">
-              <label className="mr-2">Filter by Lab:</label>
-              <select
-                  value={filterLab}
-                  onChange={(e) => setFilterLab(e.target.value)}
-                  className="text-black p-1 rounded"
-              >
-                <option value="all">All</option>
-                {labs.map((lab) => (
-                    <option key={lab} value={lab}>
-                      {lab}
-                    </option>
-                ))}
-              </select>
+            <div className="mb-4 flex gap-4 flex-wrap">
+              <div>
+                <label className="mr-2">Filter by Lab:</label>
+                <select
+                    value={filterLab}
+                    onChange={(e) => setFilterLab(e.target.value)}
+                    className="text-black p-1 rounded"
+                >
+                  <option value="all">All</option>
+                  {labs.map((lab) => (
+                      <option key={lab} value={lab}>
+                        {lab}
+                      </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mr-2">Filter by Reason:</label>
+                <select
+                    value={filterReason}
+                    onChange={(e) => setFilterReason(e.target.value)}
+                    className="text-black p-1 rounded"
+                >
+                  <option value="all">All</option>
+                  {reasons.map((reason) => (
+                      <option key={reason} value={reason}>
+                        {reason}
+                      </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {filteredRecords.length === 0 && <p>No flagged records.</p>}
@@ -172,6 +199,7 @@ export default function VerifyPage() {
                     <tr className="text-left bg-[#2a2a2a]">
                       <th className="p-2">SRN</th>
                       <th className="p-2">Lab</th>
+                      <th className="p-2">Reason Flagged</th>
                       <th className="p-2">Action</th>
                     </tr>
                   </thead>
@@ -180,6 +208,9 @@ export default function VerifyPage() {
                         <tr key={rec.id} className="border-b border-gray-700">
                           <td className="p-2">{rec.srn}</td>
                           <td className="p-2">{rec.lab || '-'}</td>
+                          <td className="p-2">
+                            {rec.reason_flagged ?? 'Reason not found'}
+                          </td>
                           <td className="p-2">
                             <button
                                 onClick={() => handleSelectRecord(rec)}
@@ -196,12 +227,13 @@ export default function VerifyPage() {
 
         {selected && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white p-4 rounded w-11/12 max-w-2xl">
+              <div className="bg-white p-4 rounded w-11/12 max-w-2xl text-black">
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h2 className="text-xl font-semibold">SRN: {selected.srn}</h2>
-                    {studentName && <p className="text-gray-700">Name: {studentName}</p>}
-                    {studentLab && <p className="text-gray-700">Lab: {studentLab}</p>}
+                    {studentName && <p className="text-black">Name: {studentName}</p>}
+                    {studentLab && <p className="text-black">Lab: {studentLab}</p>}
+                    <p className="text-black">Reason: {selected.reason_flagged ?? 'Reason not found'}</p>
                   </div>
                   <button
                       onClick={() => {
@@ -210,7 +242,7 @@ export default function VerifyPage() {
                         setStudentName(null);
                         setStudentLab(null);
                       }}
-                      className="text-gray-500 text-2xl leading-none"
+                      className="text-black text-2xl leading-none"
                   >
                     &times;
                   </button>
@@ -229,7 +261,7 @@ export default function VerifyPage() {
                             onError={(e) => (e.currentTarget.src = "/placeholder.png")}
                         />
                     ) : (
-                        <p className="text-sm text-gray-500">Loading...</p>
+                        <p className="text-sm text-black">Loading...</p>
                     )}
                   </div>
                   <div className="flex-1">
