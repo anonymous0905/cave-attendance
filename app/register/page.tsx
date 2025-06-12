@@ -5,6 +5,7 @@ import Image from "next/image";
 import WebcamCapture from "@/components/WebcamCapture";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import SideNav from "@/components/SideNav";
 
 export default function RegisterPage() {
     const [imageData, setImageData] = useState<string | null>(null);
@@ -61,53 +62,67 @@ export default function RegisterPage() {
     };
 
     return (
-        <div className="max-w-xl mx-auto p-6">
-            <h1 className="text-2xl font-bold mb-4">Register Intern</h1>
+        <div className="flex">
+            <SideNav />
+            <div className="flex-1 p-6">
+                <h1 className="text-2xl font-bold mb-4">Register Intern</h1>
 
-            <input
-                placeholder="SRN"
-                value={form.srn}
-                onChange={(e) => setForm({ ...form, srn: e.target.value })}
-                className="w-full p-2 mb-2 border rounded"
-            />
-            <input
-                placeholder="Name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full p-2 mb-2 border rounded"
-            />
-            <input
-                placeholder="Email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full p-2 mb-2 border rounded"
-            />
-            <input
-                placeholder="Lab"
-                value={form.lab}
-                onChange={(e) => setForm({ ...form, lab: e.target.value })}
-                className="w-full p-2 mb-4 border rounded"
-            />
+                <input
+                    placeholder="SRN"
+                    value={form.srn}
+                    onChange={(e) => setForm({ ...form, srn: e.target.value })}
+                    className="w-full p-2 mb-2 border rounded"
+                />
+                <input
+                    placeholder="Name"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    className="w-full p-2 mb-2 border rounded"
+                />
+                <input
+                    placeholder="Email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="w-full p-2 mb-2 border rounded"
+                />
+                <input
+                    placeholder="Lab"
+                    value={form.lab}
+                    onChange={(e) => setForm({ ...form, lab: e.target.value })}
+                    className="w-full p-2 mb-4 border rounded"
+                />
 
-            {!imageData && (
-                <>
-                    <WebcamCapture onCapture={setImageData} />
-                    <p className="text-center my-2">OR</p>
-                    <input type="file" accept="image/*" onChange={handleFileChange} className="w-full mb-4" />
-                </>
-            )}
-            {imageData && (
-                <Image src={imageData} alt="Preview" width={160} height={160} className="w-40 h-40 rounded shadow mb-4" />
-            )}
+                {!imageData && (
+                    <>
+                        <WebcamCapture onCapture={setImageData} />
+                        <p className="text-center my-2">OR</p>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileChange}
+                            className="w-full mb-4"
+                        />
+                    </>
+                )}
+                {imageData && (
+                    <Image
+                        src={imageData}
+                        alt="Preview"
+                        width={160}
+                        height={160}
+                        className="w-40 h-40 rounded shadow mb-4"
+                    />
+                )}
 
-            <button
-                onClick={handleSubmit}
-                className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
-            >
-                Submit
-            </button>
+                <button
+                    onClick={handleSubmit}
+                    className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
+                >
+                    Submit
+                </button>
 
-            {status && <p className="mt-2 text-sm text-gray-600">{status}</p>}
+                {status && <p className="mt-2 text-sm text-gray-600">{status}</p>}
+            </div>
         </div>
     );
 }
