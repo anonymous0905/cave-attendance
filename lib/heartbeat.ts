@@ -9,7 +9,7 @@ const projectionMatrix = math.matrix([
 ]);
 
 function containsNaN(arr: number[]) {
-  return arr.some((value) => value === false || Number.isNaN(value));
+  return arr.some((value) => Number.isNaN(value));
 }
 
 function findIndexOfMaxValue(array: number[]) {
@@ -70,18 +70,24 @@ export function POS(signal: RGBSample[], windowSize: number) {
     let windowedSignal = signal
       .slice(i, i + windowSize)
       .map((v) => [v.R, v.G, v.B]);
-    windowedSignal = math.transpose(windowedSignal) as math.Matrix;
-    const mean = math.mean(windowedSignal, 1) as math.Matrix;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    windowedSignal = math.transpose(windowedSignal) as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mean = math.mean(windowedSignal, 1) as any;
     const normalizedSignal = math.multiply(
       math.inv(math.diag(mean)),
       windowedSignal
-    ) as math.Matrix;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ) as any;
 
     const S = math.multiply(projectionMatrix, normalizedSignal).toArray() as number[][];
     const std = [1, math.std(S[0]) / math.std(S[1])];
-    let P = math.multiply(std, S) as number[] | math.MathType;
-    P = math.subtract(P, math.divide(math.mean(P), math.std(P))) as number[] | math.MathType;
-    P = math.add(H.slice(i, i + windowSize), P) as number[] | math.MathType;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let P = math.multiply(std, S) as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    P = math.subtract(P, math.divide(math.mean(P), math.std(P))) as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    P = math.add(H.slice(i, i + windowSize), P) as any;
 
     H.splice(i, windowSize, ...P as number[]);
   }
