@@ -15,7 +15,7 @@ interface Student {
 
 interface DayAttendance {
   date: string
-  present: boolean
+  status: 'Present' | 'Half Day' | 'Absent'
   login?: string
   logout?: string
 }
@@ -24,6 +24,15 @@ export default function AttendancePage() {
   const [students, setStudents] = useState<Student[]>([])
   const [selected, setSelected] = useState<Student | null>(null)
   const [week, setWeek] = useState<DayAttendance[]>([])
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 6)
+    return d.toISOString().split('T')[0]
+  })
+  const [endDate, setEndDate] = useState(() => {
+    const d = new Date()
+    return d.toISOString().split('T')[0]
+  })
   const router = useRouter()
 
   useEffect(() => {
@@ -40,27 +49,25 @@ export default function AttendancePage() {
 
   const fetchAttendance = async (student: Student) => {
     setSelected(student)
-    const now = new Date()
-    const sunday = new Date(now)
-    sunday.setDate(now.getDate() - now.getDay())
-    sunday.setHours(0,0,0,0)
-    const saturday = new Date(sunday)
-    saturday.setDate(sunday.getDate() + 6)
-    saturday.setHours(23,59,59,999)
+    const start = new Date(startDate)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(endDate)
+    end.setHours(23, 59, 59, 999)
 
     const { data, error } = await supabase
       .from('attendance_logs')
       .select('mode, timestamp')
       .eq('srn', student.srn)
-      .gte('timestamp', sunday.toISOString())
-      .lte('timestamp', saturday.toISOString())
+      .gte('timestamp', start.toISOString())
+      .lte('timestamp', end.toISOString())
       .order('timestamp', { ascending: true })
 
     const days: DayAttendance[] = []
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(sunday)
-      d.setDate(sunday.getDate() + i)
-      days.push({ date: d.toISOString().split('T')[0], present: false })
+    const diff = Math.floor((end.valueOf() - start.valueOf()) / (1000 * 60 * 60 * 24)) + 1
+    for (let i = 0; i < diff; i++) {
+      const d = new Date(start)
+      d.setDate(start.getDate() + i)
+      days.push({ date: d.toISOString().split('T')[0], status: 'Absent' })
     }
 
     if (!error && data) {
@@ -78,17 +85,33 @@ export default function AttendancePage() {
       })
       days.forEach(day => {
         const entry = byDate[day.date]
-        if (entry?.login && entry?.logout) {
-          const diff = new Date(entry.logout).valueOf() - new Date(entry.login).valueOf()
-          if (diff >= 7.5 * 60 * 60 * 1000) {
-            day.present = true
-          }
+        if (entry?.login) {
           day.login = new Date(entry.login).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })
-          day.logout = new Date(entry.logout).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })
+          if (entry.logout) {
+            day.logout = new Date(entry.logout).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })
+            const diff = new Date(entry.logout).valueOf() - new Date(entry.login).valueOf()
+            day.status = diff >= 7.5 * 60 * 60 * 1000 ? 'Present' : 'Half Day'
+          } else {
+            day.status = 'Half Day'
+          }
         }
       })
     }
     setWeek(days)
+  }
+
+  const downloadCsv = () => {
+    if (!selected) return
+    const headers = ['Date', 'Login', 'Logout', 'Status']
+    const rows = week.map(d => [d.date, d.login ?? '', d.logout ?? '', d.status].join(','))
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${selected.srn}-attendance.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   return (
@@ -111,6 +134,26 @@ export default function AttendancePage() {
 
         <main className="flex-1 p-10 ml-64">
           <h2 className="text-3xl font-bold mb-6">Intern Attendance</h2>
+          <div className="mb-4 space-x-2">
+            <label>
+              Start:
+              <input
+                type="date"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+                className="ml-1 text-black"
+              />
+            </label>
+            <label className="ml-4">
+              End:
+              <input
+                type="date"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+                className="ml-1 text-black"
+              />
+            </label>
+          </div>
           <section className="bg-[#2a2a2a] p-6 rounded-2xl overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
@@ -158,11 +201,14 @@ export default function AttendancePage() {
                         <td className="p-2">{day.date}</td>
                         <td className="p-2">{day.login || '-'}</td>
                         <td className="p-2">{day.logout || '-'}</td>
-                        <td className="p-2">{day.present ? 'Present' : 'Absent'}</td>
+                        <td className="p-2">{day.status}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                <div className="text-right">
+                  <button onClick={downloadCsv} className="bg-blue-600 text-white px-3 py-1 rounded">Download CSV</button>
+                </div>
               </div>
             </div>
           )}
