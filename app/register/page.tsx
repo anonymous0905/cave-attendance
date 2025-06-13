@@ -74,6 +74,7 @@ export default function RegisterPage() {
                             <button onClick={() => router.push('/dashboard')} className="text-left w-full">Dashboard</button>
                             <button onClick={() => router.push('/register')} className="text-left w-full bg-gray-200 text-black rounded px-1 py-1">New Registration</button>
                             <button onClick={() => router.push('/verify')} className="text-left w-full">Verify Records</button>
+                            <button onClick={() => router.push('/attendance')} className="text-left w-full">View Attendance</button>
                             <button onClick={() => router.push('/myaccount')} className="text-left w-full">My Account</button>
                         </nav>
                         <button
