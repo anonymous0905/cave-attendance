@@ -24,6 +24,8 @@ export default function AttendancePage() {
   const [students, setStudents] = useState<Student[]>([])
   const [selected, setSelected] = useState<Student | null>(null)
   const [week, setWeek] = useState<DayAttendance[]>([])
+  const [labs, setLabs] = useState<string[]>([])
+  const [filterLab, setFilterLab] = useState('all')
   const [startDate, setStartDate] = useState(() => {
     const d = new Date()
     d.setDate(d.getDate() - 6)
@@ -43,9 +45,17 @@ export default function AttendancePage() {
         return
       }
       const { data, error } = await supabase.from('students').select('srn, name, lab')
-      if (!error && data) setStudents(data)
+      if (!error && data) {
+        setStudents(data)
+        const uniqueLabs = Array.from(new Set(data.map(s => s.lab).filter(Boolean))) as string[]
+        setLabs(uniqueLabs)
+      }
     })()
   }, [router])
+
+  const filteredStudents = students.filter(
+    st => filterLab === 'all' || st.lab === filterLab
+  )
 
   const fetchAttendance = async (student: Student) => {
     setSelected(student)
@@ -114,6 +124,76 @@ export default function AttendancePage() {
     URL.revokeObjectURL(url)
   }
 
+  const downloadAllCsv = async () => {
+    const start = new Date(startDate)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(endDate)
+    end.setHours(23, 59, 59, 999)
+
+    const srns = filteredStudents.map(s => s.srn)
+    if (srns.length === 0) return
+
+    const { data, error } = await supabase
+      .from('attendance_logs')
+      .select('srn, mode, timestamp')
+      .in('srn', srns)
+      .gte('timestamp', start.toISOString())
+      .lte('timestamp', end.toISOString())
+      .order('timestamp', { ascending: true })
+
+    const dates: string[] = []
+    const diff = Math.floor((end.valueOf() - start.valueOf()) / (1000 * 60 * 60 * 24)) + 1
+    for (let i = 0; i < diff; i++) {
+      const d = new Date(start)
+      d.setDate(start.getDate() + i)
+      dates.push(d.toISOString().split('T')[0])
+    }
+
+    const bySrn: Record<string, Record<string, { login?: string; logout?: string }>> = {}
+    if (!error && data) {
+      data.forEach(log => {
+        const dt = new Date(log.timestamp)
+        const key = dt.toISOString().split('T')[0]
+        const srn = log.srn as string
+        const userMap = bySrn[srn] || {}
+        const entry = userMap[key] || {}
+        if (log.mode === 'login') {
+          if (!entry.login || dt.toISOString() < entry.login) entry.login = dt.toISOString()
+        } else if (log.mode === 'logout') {
+          if (!entry.logout || dt.toISOString() > entry.logout) entry.logout = dt.toISOString()
+        }
+        userMap[key] = entry
+        bySrn[srn] = userMap
+      })
+    }
+
+    const headers = ['SRN', ...dates]
+    const rows = filteredStudents.map(st => {
+      const dayMap = bySrn[st.srn] || {}
+      const statuses = dates.map(date => {
+        const entry = dayMap[date]
+        if (entry?.login) {
+          if (entry.logout) {
+            const diff = new Date(entry.logout).valueOf() - new Date(entry.login).valueOf()
+            return diff >= 7.5 * 60 * 60 * 1000 ? 'Present' : 'Half Day'
+          }
+          return 'Half Day'
+        }
+        return 'Absent'
+      })
+      return [st.srn, ...statuses].join(',')
+    })
+
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `attendance-${startDate}-to-${endDate}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <>
       <Image src={nav} alt="nav" width={250} height={900} className="fixed bottom-0 left-0 z-40 pointer-events-none" />
@@ -134,7 +214,7 @@ export default function AttendancePage() {
 
         <main className="flex-1 p-10 ml-64">
           <h2 className="text-3xl font-bold mb-6">Intern Attendance</h2>
-          <div className="mb-4 space-x-2">
+          <div className="mb-4 space-x-2 flex items-center flex-wrap">
             <label>
               Start:
               <input
@@ -153,6 +233,25 @@ export default function AttendancePage() {
                 className="ml-1 text-black"
               />
             </label>
+            <label className="ml-4 flex items-center">
+              Lab:
+              <select
+                value={filterLab}
+                onChange={e => setFilterLab(e.target.value)}
+                className="ml-1 text-black p-1 rounded"
+              >
+                <option value="all">All</option>
+                {labs.map(lab => (
+                  <option key={lab} value={lab}>{lab}</option>
+                ))}
+              </select>
+            </label>
+            <button
+              onClick={downloadAllCsv}
+              className="ml-auto bg-blue-600 text-white px-3 py-1 rounded mt-2"
+            >
+              Download All CSV
+            </button>
           </div>
           <section className="bg-[#2a2a2a] p-6 rounded-2xl overflow-x-auto">
             <table className="min-w-full text-sm">
@@ -165,7 +264,7 @@ export default function AttendancePage() {
                 </tr>
               </thead>
               <tbody>
-                {students.map(st => (
+                {filteredStudents.map(st => (
                   <tr key={st.srn} className="border-b border-gray-700">
                     <td className="p-2">{st.srn}</td>
                     <td className="p-2">{st.name}</td>
