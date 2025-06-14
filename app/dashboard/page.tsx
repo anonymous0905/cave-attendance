@@ -28,6 +28,7 @@ interface Log {
 
 export default function DashboardPage() {
   const [logs, setLogs] = useState<Log[]>([])
+  const [name, setName] = useState('')
   const router = useRouter()
 
   useEffect(() => {
@@ -37,6 +38,8 @@ export default function DashboardPage() {
         router.push('/login')
         return
       }
+
+      setName(user.user_metadata?.name ?? user.email ?? '')
 
       const sevenDaysAgo = new Date()
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6) // include today
@@ -109,6 +112,7 @@ export default function DashboardPage() {
 
           {/* Main Content */}
           <main className="flex-1 p-10 ml-64 space-y-10">
+            <p className="text-xl">Welcome, {name}</p>
             <h2 className="text-3xl font-bold">Attendance Dashboard</h2>
 
             {/* Recent Logins */}
