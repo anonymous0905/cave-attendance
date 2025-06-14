@@ -11,6 +11,7 @@ export default function LoginPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
+    const [status, setStatus] = useState('')
     const router = useRouter()
 
     useEffect(() => {
@@ -24,6 +25,7 @@ export default function LoginPage() {
 
     const handleLogin = async () => {
         setError('')
+        setStatus('Signing in...')
         const { error } = await supabase.auth.signInWithPassword({
             email,
             password,
@@ -31,7 +33,9 @@ export default function LoginPage() {
 
         if (error) {
             setError(error.message)
+            setStatus('')
         } else {
+            setStatus('Login successful! Redirecting...')
             router.push('/dashboard')
         }
     }
@@ -68,6 +72,9 @@ export default function LoginPage() {
 
                     {error && (
                         <p className="text-xs text-center text-red-600 mt-2">{error}</p>
+                    )}
+                    {status && (
+                        <p className="text-xs text-center text-gray-600 mt-2">{status}</p>
                     )}
                 </div>
 
