@@ -4,6 +4,7 @@ import Webcam from "react-webcam";
 
 export default function WebcamCapture({ onCapture }: { onCapture: (img: string) => void }) {
     const webcamRef = useRef<Webcam>(null);
+    const overlayRef = useRef<HTMLCanvasElement>(null);
     const [spoofDetected, setSpoofDetected] = useState(false);
     const [heartRate, setHeartRate] = useState<number | null>(null);
 
@@ -92,6 +93,8 @@ export default function WebcamCapture({ onCapture }: { onCapture: (img: string) 
         const detector = new FaceDetectorCtor({ fastMode: true } as any);
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
+        const overlay = overlayRef.current;
+        const overlayCtx = overlay?.getContext("2d");
         const buffer: number[] = [];
         const fps = 30; // approximate frame rate
         let frame = 0;
@@ -106,6 +109,11 @@ export default function WebcamCapture({ onCapture }: { onCapture: (img: string) 
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            if (overlay && overlayCtx) {
+                overlay.width = video.videoWidth;
+                overlay.height = video.videoHeight;
+                overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+            }
 
             try {
                 const faces = await detector.detect(video);
@@ -116,6 +124,13 @@ export default function WebcamCapture({ onCapture }: { onCapture: (img: string) 
                     const w = box.width * 0.4;
                     const h = box.height * 0.15;
                     const data = ctx.getImageData(x, y, w, h).data;
+                    if (overlayCtx) {
+                        overlayCtx.strokeStyle = "red";
+                        overlayCtx.lineWidth = 2;
+                        overlayCtx.strokeRect(box.x, box.y, box.width, box.height);
+                        overlayCtx.strokeStyle = "lime";
+                        overlayCtx.strokeRect(x, y, w, h);
+                    }
                     let sum = 0;
                     for (let i = 0; i < data.length; i += 4) {
                         sum += data[i + 1]; // green channel
@@ -128,6 +143,8 @@ export default function WebcamCapture({ onCapture }: { onCapture: (img: string) 
                         const bpm = computeBpm(buffer.slice(-150), fps);
                         if (bpm) setHeartRate(bpm);
                     }
+                } else if (overlayCtx && overlay) {
+                    overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
                 }
             } catch {
                 // ignore detection errors
@@ -149,12 +166,18 @@ export default function WebcamCapture({ onCapture }: { onCapture: (img: string) 
 
     return (
         <div className="flex flex-col items-center">
-            <Webcam
-                ref={webcamRef}
-                screenshotFormat="image/jpeg"
-                className="rounded-lg shadow"
-                videoConstraints={{ facingMode: "user" }}
-            />
+            <div className="relative">
+                <Webcam
+                    ref={webcamRef}
+                    screenshotFormat="image/jpeg"
+                    className="rounded-lg shadow"
+                    videoConstraints={{ facingMode: "user" }}
+                />
+                <canvas
+                    ref={overlayRef}
+                    className="absolute top-0 left-0 rounded-lg"
+                />
+            </div>
             <button
                 onClick={capture}
                 disabled={spoofDetected || heartRate === null}
