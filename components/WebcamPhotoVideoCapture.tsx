@@ -56,7 +56,10 @@ export default function WebcamPhotoVideoCapture({ onCapture }: { onCapture: (img
         if (!imageSrc || !stream) return;
 
         chunksRef.current = [];
-        mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: "video/webm" });
+        mediaRecorderRef.current = new MediaRecorder(stream, {
+            mimeType: "video/webm;codecs=vp9",
+            videoBitsPerSecond: 2500000,
+        });
         mediaRecorderRef.current.ondataavailable = (e) => {
             if (e.data.size > 0) chunksRef.current.push(e.data);
         };
@@ -92,8 +95,9 @@ export default function WebcamPhotoVideoCapture({ onCapture }: { onCapture: (img
                 ref={webcamRef}
                 audio
                 screenshotFormat="image/jpeg"
+                screenshotQuality={1}
                 className="rounded-lg shadow"
-                videoConstraints={{ facingMode: "user" }}
+                videoConstraints={{ facingMode: "user", width: 1280, height: 720 }}
             />
             {capturing && (
                 <div className="w-full bg-gray-200 rounded h-2 mt-2">
