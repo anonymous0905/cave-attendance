@@ -98,7 +98,7 @@ export default function WebcamPhotoVideoCapture({ onCapture }: { onCapture: (img
         <div className="flex flex-col items-center">
             <Webcam
                 ref={webcamRef}
-                audio
+                audio={false}
                 screenshotFormat="image/jpeg"
                 screenshotQuality={1}
                 className="rounded-lg shadow"
