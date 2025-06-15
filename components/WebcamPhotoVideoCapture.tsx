@@ -50,21 +50,26 @@ export default function WebcamPhotoVideoCapture({ onCapture }: { onCapture: (img
         return () => clearInterval(checkInterval);
     }, []);
 
+    // Capture a photo and a 10s video clip. H.264 MP4 is preferred but the
+    // browser may fall back to WebM/VP9 if unsupported. Bit depth and chroma
+    // settings cannot be controlled via the MediaRecorder API.
     const startCapture = () => {
         const imageSrc = webcamRef.current?.getScreenshot();
         const stream = webcamRef.current?.stream;
         if (!imageSrc || !stream) return;
 
         chunksRef.current = [];
-        mediaRecorderRef.current = new MediaRecorder(stream, {
-            mimeType: "video/webm;codecs=vp9",
-            videoBitsPerSecond: 2500000,
-        });
+        const h264Mime = 'video/mp4;codecs=avc1.42E01E';
+        const options = MediaRecorder.isTypeSupported(h264Mime)
+            ? { mimeType: h264Mime, videoBitsPerSecond: 5000000 }
+            : { mimeType: 'video/webm;codecs=vp9', videoBitsPerSecond: 5000000 };
+        mediaRecorderRef.current = new MediaRecorder(stream, options);
+        const mimeType = options.mimeType;
         mediaRecorderRef.current.ondataavailable = (e) => {
             if (e.data.size > 0) chunksRef.current.push(e.data);
         };
         mediaRecorderRef.current.onstop = () => {
-            const blob = new Blob(chunksRef.current, { type: "video/webm" });
+            const blob = new Blob(chunksRef.current, { type: mimeType });
             const reader = new FileReader();
             reader.onloadend = () => {
                 const videoBase64 = reader.result as string;
@@ -97,7 +102,12 @@ export default function WebcamPhotoVideoCapture({ onCapture }: { onCapture: (img
                 screenshotFormat="image/jpeg"
                 screenshotQuality={1}
                 className="rounded-lg shadow"
-                videoConstraints={{ facingMode: "user", width: 1280, height: 720 }}
+                videoConstraints={{
+                    facingMode: "user",
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    frameRate: { ideal: 60 },
+                }}
             />
             {capturing && (
                 <div className="w-full bg-gray-200 rounded h-2 mt-2">
