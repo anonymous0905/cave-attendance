@@ -165,7 +165,7 @@ export default function VerifyPage() {
                 <select
                     value={filterLab}
                     onChange={(e) => setFilterLab(e.target.value)}
-                    className="text-black p-1 rounded"
+                    className="text-black bg-white p-1 rounded"
                 >
                   <option value="all">All</option>
                   {labs.map((lab) => (
@@ -180,7 +180,7 @@ export default function VerifyPage() {
                 <select
                     value={filterReason}
                     onChange={(e) => setFilterReason(e.target.value)}
-                    className="text-black p-1 rounded"
+                    className="text-black bg-white p-1 rounded"
                 >
                   <option value="all">All</option>
                   {reasons.map((reason) => (
