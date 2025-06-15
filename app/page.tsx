@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import WebcamCapture from '@/components/WebcamCapture'
+import WebcamPhotoVideoCapture from '@/components/WebcamPhotoVideoCapture'
 import vrDoctorsImg from '@/public/login-side.png'
 import caveLogo from '@/public/cave-logo1.png'
 
@@ -12,6 +12,7 @@ export default function CapturePage() {
   const [mode, setMode] = useState<'login' | 'logout'>('login')
   const [status, setStatus] = useState('')
   const [imageData, setImageData] = useState<string | null>(null)
+  const [videoData, setVideoData] = useState<string | null>(null)
 
   const getLocation = () => {
     return new Promise<{ lat: number; lng: number }>((resolve, reject) => {
@@ -34,8 +35,8 @@ export default function CapturePage() {
   const handleSubmit = async () => {
     setStatus('Submitting...')
 
-    if (!srn || !imageData) {
-      setStatus('Please enter SRN and capture a photo')
+    if (!srn || !imageData || !videoData) {
+      setStatus('Please enter SRN and capture a photo and video')
       return
     }
 
@@ -51,6 +52,7 @@ export default function CapturePage() {
           latitude: coords.lat,
           longitude: coords.lng,
           imageBase64: imageData,
+          videoBase64: videoData,
         }),
       })
 
@@ -61,6 +63,7 @@ export default function CapturePage() {
         setStatus('Attendance submitted successfully.')
         setSrn('')
         setImageData(null)
+        setVideoData(null)
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)
@@ -97,7 +100,14 @@ export default function CapturePage() {
               <option value="logout">Logout</option>
             </select>
 
-            {!imageData && <WebcamCapture onCapture={setImageData} />}
+            {!imageData && !videoData && (
+                <WebcamPhotoVideoCapture
+                    onCapture={(img, vid) => {
+                        setImageData(img)
+                        setVideoData(vid)
+                    }}
+                />
+            )}
             {imageData && (
                 <Image
                     src={imageData}
