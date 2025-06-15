@@ -15,7 +15,7 @@ interface Student {
 
 interface DayAttendance {
   date: string
-  status: 'Present' | 'Half Day' | 'Absent'
+  status: 'Present' | 'Half Day' | 'Absent' | 'Verification Pending'
   login?: string
   logout?: string
 }
@@ -66,7 +66,7 @@ export default function AttendancePage() {
 
     const { data, error } = await supabase
       .from('attendance_logs')
-      .select('mode, timestamp')
+      .select('mode, timestamp, verified')
       .eq('srn', student.srn)
       .gte('timestamp', start.toISOString())
       .lte('timestamp', end.toISOString())
@@ -81,15 +81,21 @@ export default function AttendancePage() {
     }
 
     if (!error && data) {
-      const byDate: Record<string, { login?: string; logout?: string }> = {}
+      const byDate: Record<string, { login?: string; logout?: string; loginVerified?: boolean; logoutVerified?: boolean }> = {}
       data.forEach(log => {
         const dt = new Date(log.timestamp)
         const key = dt.toISOString().split('T')[0]
         const entry = byDate[key] || {}
         if (log.mode === 'login') {
-          if (!entry.login || dt.toISOString() < entry.login) entry.login = dt.toISOString()
+          if (!entry.login || dt.toISOString() < entry.login) {
+            entry.login = dt.toISOString()
+            entry.loginVerified = log.verified ?? true
+          }
         } else if (log.mode === 'logout') {
-          if (!entry.logout || dt.toISOString() > entry.logout) entry.logout = dt.toISOString()
+          if (!entry.logout || dt.toISOString() > entry.logout) {
+            entry.logout = dt.toISOString()
+            entry.logoutVerified = log.verified ?? true
+          }
         }
         byDate[key] = entry
       })
@@ -103,6 +109,9 @@ export default function AttendancePage() {
             day.status = diff >= 7.5 * 60 * 60 * 1000 ? 'Present' : 'Half Day'
           } else {
             day.status = 'Half Day'
+          }
+          if (entry.loginVerified === false || entry.logoutVerified === false) {
+            day.status = 'Verification Pending'
           }
         }
       })
@@ -135,7 +144,7 @@ export default function AttendancePage() {
 
     const { data, error } = await supabase
       .from('attendance_logs')
-      .select('srn, mode, timestamp')
+      .select('srn, mode, timestamp, verified')
       .in('srn', srns)
       .gte('timestamp', start.toISOString())
       .lte('timestamp', end.toISOString())
@@ -149,7 +158,7 @@ export default function AttendancePage() {
       dates.push(d.toISOString().split('T')[0])
     }
 
-    const bySrn: Record<string, Record<string, { login?: string; logout?: string }>> = {}
+    const bySrn: Record<string, Record<string, { login?: string; logout?: string; loginVerified?: boolean; logoutVerified?: boolean }>> = {}
     if (!error && data) {
       data.forEach(log => {
         const dt = new Date(log.timestamp)
@@ -158,9 +167,15 @@ export default function AttendancePage() {
         const userMap = bySrn[srn] || {}
         const entry = userMap[key] || {}
         if (log.mode === 'login') {
-          if (!entry.login || dt.toISOString() < entry.login) entry.login = dt.toISOString()
+          if (!entry.login || dt.toISOString() < entry.login) {
+            entry.login = dt.toISOString()
+            entry.loginVerified = log.verified ?? true
+          }
         } else if (log.mode === 'logout') {
-          if (!entry.logout || dt.toISOString() > entry.logout) entry.logout = dt.toISOString()
+          if (!entry.logout || dt.toISOString() > entry.logout) {
+            entry.logout = dt.toISOString()
+            entry.logoutVerified = log.verified ?? true
+          }
         }
         userMap[key] = entry
         bySrn[srn] = userMap
@@ -173,11 +188,15 @@ export default function AttendancePage() {
       const statuses = dates.map(date => {
         const entry = dayMap[date]
         if (entry?.login) {
+          let status: 'Present' | 'Half Day' | 'Absent' | 'Verification Pending' = 'Half Day'
           if (entry.logout) {
             const diff = new Date(entry.logout).valueOf() - new Date(entry.login).valueOf()
-            return diff >= 7.5 * 60 * 60 * 1000 ? 'Present' : 'Half Day'
+            status = diff >= 7.5 * 60 * 60 * 1000 ? 'Present' : 'Half Day'
           }
-          return 'Half Day'
+          if (entry.loginVerified === false || entry.logoutVerified === false) {
+            status = 'Verification Pending'
+          }
+          return status
         }
         return 'Absent'
       })
@@ -221,7 +240,7 @@ export default function AttendancePage() {
                 type="date"
                 value={startDate}
                 onChange={e => setStartDate(e.target.value)}
-                className="ml-1 text-black"
+                className="ml-1 text-black bg-white"
               />
             </label>
             <label className="ml-4">
@@ -230,7 +249,7 @@ export default function AttendancePage() {
                 type="date"
                 value={endDate}
                 onChange={e => setEndDate(e.target.value)}
-                className="ml-1 text-black"
+                className="ml-1 text-black bg-white"
               />
             </label>
             <label className="ml-4 flex items-center">
@@ -238,7 +257,7 @@ export default function AttendancePage() {
               <select
                 value={filterLab}
                 onChange={e => setFilterLab(e.target.value)}
-                className="ml-1 text-black p-1 rounded"
+                className="ml-1 text-black bg-white p-1 rounded"
               >
                 <option value="all">All</option>
                 {labs.map(lab => (
